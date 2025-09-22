@@ -62,6 +62,11 @@
  /* Pointer to the gui */
 static UG_GUI* gui;
 
+#ifdef UGUI_USE_SYSTEM_FONT
+extern int peg_get_char_width(char ch, const void* pFont);
+extern void peg_draw_char(char ch, int x, int y, uint16_t fc, uint16_t bc, const void* pFont);
+#endif
+
 #ifdef USE_FONT_4X6
 __UG_FONT_DATA unsigned char font_4x6[256][6]={
 {0x00,0x00,0x00,0x00,0x00,0x00}, // 0x00
@@ -4954,7 +4959,11 @@ void UG_PutString( UG_S16 x, UG_S16 y, char* str )
          xp = gui->x_dim;
          continue;
       }
-	  cw = gui->font.widths ? gui->font.widths[chr - gui->font.start_char] : gui->font.char_width;
+      if (gui->font.font_type == FONT_TYPE_PEG) {
+         cw = peg_get_char_width(chr, (void*)gui->font.p);
+      } else {
+	      cw = gui->font.widths ? gui->font.widths[chr - gui->font.start_char] : gui->font.char_width;
+      }
 
       if ( xp + cw > gui->x_dim - 1 )
       {
@@ -5265,24 +5274,29 @@ void _UG_PutChar( char chr, UG_S16 x, UG_S16 y, UG_COLOR fc, UG_COLOR bc, const 
 
    switch ( bt )
    {
-      case 0xF6: bt = 0x94; break; // ö
-      case 0xD6: bt = 0x99; break; // Ö
-      case 0xFC: bt = 0x81; break; // ü
-      case 0xDC: bt = 0x9A; break; // Ü
-      case 0xE4: bt = 0x84; break; // ä
-      case 0xC4: bt = 0x8E; break; // Ä
-      case 0xB5: bt = 0xE6; break; // µ
-      case 0xB0: bt = 0xF8; break; // °
+      case 0xF6: bt = 0x94; break; // ï¿½
+      case 0xD6: bt = 0x99; break; // ï¿½
+      case 0xFC: bt = 0x81; break; // ï¿½
+      case 0xDC: bt = 0x9A; break; // ï¿½
+      case 0xE4: bt = 0x84; break; // ï¿½
+      case 0xC4: bt = 0x8E; break; // ï¿½
+      case 0xB5: bt = 0xE6; break; // ï¿½
+      case 0xB0: bt = 0xF8; break; // ï¿½
    }
 
-   if (bt < font->start_char || bt > font->end_char) return;
+   if (font->font_type == FONT_TYPE_PEG) {
+      actual_char_width = peg_get_char_width(bt, (void*)font->p);
+   } else {
+      if (bt < font->start_char || bt > font->end_char) return;
+      yo = y;
+      bn = font->char_width;
+      if ( !bn ) return;
+      bn >>= 3;
+      if ( font->char_width % 8 ) bn++;
+      actual_char_width = (font->widths ? font->widths[bt - font->start_char] : font->char_width);
+   }
    
-   yo = y;
-   bn = font->char_width;
-   if ( !bn ) return;
-   bn >>= 3;
-   if ( font->char_width % 8 ) bn++;
-   actual_char_width = (font->widths ? font->widths[bt - font->start_char] : font->char_width);
+   if (actual_char_width == 0) return;
 
    /* Is hardware acceleration available? */
    if ( gui->driver[DRIVER_FILL_AREA].state & DRIVER_ENABLED )
@@ -5331,6 +5345,22 @@ void _UG_PutChar( char chr, UG_S16 x, UG_S16 y, UG_COLOR fc, UG_COLOR bc, const 
 			  index += font->char_width - actual_char_width;
 		  }
 	  }
+     else if (font->font_type == FONT_TYPE_PEG)
+     {
+         const void* pPegFont = (void*)font->p;
+         uint8_t scanline_buffer[actual_char_width]; // VLA to hold one row of pixel data
+         for (j = 0; j < font->char_height; j++) {
+            // Ask our C++ engine to fill the buffer with this row's data
+            peg_get_char_scanline(bt, j, scanline_buffer, pPegFont);
+            for (i = 0; i < actual_char_width; i++) {
+               if (scanline_buffer[i]) {
+                     push_pixel(fc);
+               } else {
+                     push_pixel(bc);
+               }
+            }
+         }
+     }
    }
    else
    {
@@ -5382,6 +5412,25 @@ void _UG_PutChar( char chr, UG_S16 x, UG_S16 y, UG_COLOR fc, UG_COLOR bc, const 
             yo++;
          }
       }
+      else if (font->font_type == FONT_TYPE_PEG)
+     {
+         const void* pPegFont = (void*)font->p;
+         uint8_t scanline_buffer[actual_char_width]; // VLA for the pixel row
+         yo = y;
+         for (j = 0; j < font->char_height; j++) {
+            peg_get_char_scanline(bt, j, scanline_buffer, pPegFont);
+            xo = x;
+            for (i = 0; i < actual_char_width; i++) {
+                  if (scanline_buffer[i]) {
+                     gui->pset(xo, yo, fc);
+                  } else {
+                     gui->pset(xo, yo, bc);
+                  }
+                  xo++;
+            }
+            yo++;
+         }
+     }
    }
 }
 

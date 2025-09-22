@@ -7,10 +7,11 @@
 extern "C" {
   #include "UGUI/ugui_config.h"
   #include "UGUI/ugui.h"
+  #include "UGUI/Fonts/system_font.h"
 }
 
-APP_NAME("Chart Test")
-APP_DESCRIPTION("WIP Charts")
+APP_NAME("UGUI Test")
+APP_DESCRIPTION("UGUI Test")
 APP_AUTHOR("s3ansh33p")
 APP_VERSION("1.0.0")
 
@@ -73,25 +74,27 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
   UG_WindowCreate( &window_1, obj_buff_wnd_1, MAX_OBJECTS, window_1_callback );
 
   UG_WindowSetTitleText( &window_1, "Test Window Title" );
-  UG_WindowSetTitleTextFont( &window_1, &FONT_8X12 );
+  UG_WindowSetTitleTextFont( &window_1, &FONT_SYSTEM_1 );
 
   UG_ButtonCreate( &window_1, &button_1, BTN_ID_0, 10, 10, 110, 60 );
-  UG_ButtonSetFont( &window_1, BTN_ID_0, &FONT_8X12 );
-  UG_ButtonSetText( &window_1, BTN_ID_0, "Button 1" );
+  UG_ButtonSetFont( &window_1, BTN_ID_0, &FONT_SYSTEM_1 );
+  UG_ButtonSetText( &window_1, BTN_ID_0, "Font Sys1" );
 
   UG_ButtonCreate( &window_1, &button_2, BTN_ID_1, 10, 80, 110, 130 );
-  UG_ButtonSetFont( &window_1, BTN_ID_1, &FONT_8X12 );
-  UG_ButtonSetText( &window_1, BTN_ID_1, "Button 2" );
+  UG_ButtonSetFont( &window_1, BTN_ID_1, &FONT_SYSTEM_2 );
+  UG_ButtonSetText( &window_1, BTN_ID_1, "Button Sys2" );
 
   UG_ButtonCreate( &window_1, &button_3, BTN_ID_2, 10, 150, 110, 200 );
-  UG_ButtonSetFont( &window_1, BTN_ID_2, &FONT_8X12 );
-  UG_ButtonSetText( &window_1, BTN_ID_2, "Button 3" );
+  UG_ButtonSetFont( &window_1, BTN_ID_2, &FONT_SYSTEM_3 );
+  UG_ButtonSetText( &window_1, BTN_ID_2, "Button Sys3" );
 
   UG_TextboxCreate( &window_1, &textbox_1, TXB_ID_0, 120, 10, 310, 200 );
   UG_TextboxSetFont( &window_1, TXB_ID_0, &FONT_8X12 );
   UG_TextboxSetText( &window_1, TXB_ID_0, "This is a test textbox\nSecond line" );
   UG_TextboxSetForeColor( &window_1, TXB_ID_0, C_BLACK );
   UG_TextboxSetAlignment( &window_1, TXB_ID_0, ALIGN_CENTER );
+
+  UG_FontSelect(&FONT_SYSTEM_1);
 
   UG_WindowShow( &window_1 );
 

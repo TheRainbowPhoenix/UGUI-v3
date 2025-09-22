@@ -28,7 +28,8 @@
 typedef enum
 {
 	FONT_TYPE_1BPP,
-	FONT_TYPE_8BPP
+	FONT_TYPE_8BPP,
+	FONT_TYPE_PEG
 } FONT_TYPE;
 
 typedef struct
