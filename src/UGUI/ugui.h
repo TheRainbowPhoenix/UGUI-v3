@@ -564,6 +564,7 @@ typedef struct
    UG_S16 x_dim;
    UG_S16 y_dim;
    UG_TOUCH touch;
+   UG_AREA clip;
    UG_WINDOW* next_window;
    UG_WINDOW* active_window;
    UG_WINDOW* last_window;
@@ -914,6 +915,9 @@ void UG_WaitForUpdate( void );
 void UG_Update( void );
 void UG_DrawBMP( UG_S16 xp, UG_S16 yp, UG_BMP* bmp );
 void UG_TouchUpdate( UG_S16 xp, UG_S16 yp, UG_U8 state );
+void UG_SetClipArea(UG_AREA* a);
+void UG_ResetClipArea(void);
+void UG_GetClipArea(UG_AREA* a);
 
 /* Driver functions */
 void UG_DriverRegister( UG_U8 type, void* driver );

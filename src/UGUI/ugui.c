@@ -4591,6 +4591,7 @@ UG_S16 UG_Init( UG_GUI* g, void (*p)(UG_S16,UG_S16,UG_COLOR), UG_S16 x, UG_S16 y
    g->next_window = NULL;
    g->active_window = NULL;
    g->last_window = NULL;
+   UG_ResetClipArea();
 
    /* Clear drivers */
    for(i=0;i<NUMBER_OF_DRIVERS;i++)
@@ -5065,6 +5066,31 @@ void UG_FontSetVSpace( UG_U16 s )
    gui->char_v_space = s;
 }
 
+void UG_GetClipArea(UG_AREA* a)
+{
+   a->xs = gui->clip.xs;
+   a->ys = gui->clip.ys;
+   a->xe = gui->clip.xe;
+   a->ye = gui->clip.ye;
+}
+
+void UG_SetClipArea(UG_AREA* a)
+{
+   gui->clip.xs = a->xs;
+   gui->clip.ys = a->ys;
+   gui->clip.xe = a->xe;
+   gui->clip.ye = a->ye;
+}
+
+// Add a public function to reset the clipping area to the full screen.
+void UG_ResetClipArea(void)
+{
+   gui->clip.xs = 0;
+   gui->clip.ys = 0;
+   gui->clip.xe = gui->x_dim - 1;
+   gui->clip.ye = gui->y_dim - 1;
+}
+
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -5295,7 +5321,7 @@ void _UG_PutChar( char chr, UG_S16 x, UG_S16 y, UG_COLOR fc, UG_COLOR bc, const 
       if ( font->char_width % 8 ) bn++;
       actual_char_width = (font->widths ? font->widths[bt - font->start_char] : font->char_width);
    }
-   
+
    if (actual_char_width == 0) return;
 
    /* Is hardware acceleration available? */
@@ -5421,12 +5447,20 @@ void _UG_PutChar( char chr, UG_S16 x, UG_S16 y, UG_COLOR fc, UG_COLOR bc, const 
             peg_get_char_scanline(bt, j, scanline_buffer, pPegFont);
             xo = x;
             for (i = 0; i < actual_char_width; i++) {
+               if (
+                  1 
+                  // TODO: Fix the clip checks 
+                  // && xo >= gui->clip.xs && xo <= gui->clip.xe
+                  // && (yo + j) >= gui->clip.ys && (yo + j) <= gui->clip.ye
+               )
+               {
                   if (scanline_buffer[i]) {
                      gui->pset(xo, yo, fc);
                   } else {
                      gui->pset(xo, yo, bc);
                   }
                   xo++;
+               }
             }
             yo++;
          }
@@ -5457,6 +5491,10 @@ void _UG_PutText(UG_TEXT* txt)
    if ( str == NULL ) return;
    if ( (ye - ys) < txt->font->char_height ) return;
 
+   UG_AREA old_clip;
+   UG_GetClipArea(&old_clip);
+   UG_SetClipArea(&txt->a);
+
    rc=1;
    c=str;
    while ( *c != 0 )
@@ -5471,7 +5509,11 @@ void _UG_PutText(UG_TEXT* txt)
       yp = ye - ys + 1;
       yp -= char_height*rc;
       yp -= char_v_space*(rc-1);
-      if ( yp < 0 ) return;
+      if ( yp < 0 ) {
+         UG_SetClipArea(&old_clip);
+         return;
+         // yp = 0
+      }
    }
    if ( align & ALIGN_V_CENTER ) yp >>= 1;
    yp += ys;
@@ -5483,16 +5525,22 @@ void _UG_PutText(UG_TEXT* txt)
       wl = 0;
       while( (*c != 0) && (*c != '\n') )
       {
-         if (*c < txt->font->start_char || *c > txt->font->end_char) {c++; continue;}
+         if (*c < txt->font->start_char || *c > txt->font->end_char) { c++; continue; }
          sl++;
-         wl += (txt->font->widths ? txt->font->widths[*c - txt->font->start_char] : char_width) + char_h_space;
+         if (txt->font->font_type == FONT_TYPE_PEG) {
+            // Use our C++ helper to get the true variable width
+            wl += peg_get_char_width(*c, (void*)txt->font->p); // + char_h_space
+         } else {
+            // Original UGUI logic
+            wl += (txt->font->widths ? txt->font->widths[*c - txt->font->start_char] : char_width) + char_h_space;
+         }
          c++;
       }
       wl -= char_h_space;
 
       xp = xe - xs + 1;
       xp -= wl;
-      if ( xp < 0 ) return;
+      // if ( xp < 0 ) return;
 
       if ( align & ALIGN_H_LEFT ) xp = 0;
       else if ( align & ALIGN_H_CENTER ) xp >>= 1;
@@ -5501,13 +5549,25 @@ void _UG_PutText(UG_TEXT* txt)
       while( (*str != '\n') )
       {
          chr = *str++;
-         if ( chr == 0 ) return;
-         _UG_PutChar(chr,xp,yp,txt->fc,txt->bc,txt->font);
-         xp += (txt->font->widths ? txt->font->widths[chr - txt->font->start_char] : char_width) + char_h_space;
+         if ( chr == 0 ) 
+         {
+            UG_SetClipArea(&old_clip);
+            return;
+         }
+         if (xp >= txt->a.xs && xp <= txt->a.xe) {
+            _UG_PutChar(chr,xp,yp,txt->fc,txt->bc,txt->font);
+         }
+
+         if (txt->font->font_type == FONT_TYPE_PEG) {
+            xp += peg_get_char_width(chr, (void*)txt->font->p); //  + char_h_space
+         } else {
+            xp += (txt->font->widths ? txt->font->widths[chr - txt->font->start_char] : char_width) + char_h_space;
+         }
       }
       str++;
       yp += char_height + char_v_space;
    }
+   UG_SetClipArea(&old_clip);
 }
 
 UG_OBJECT* _UG_GetFreeObject( UG_WINDOW* wnd )

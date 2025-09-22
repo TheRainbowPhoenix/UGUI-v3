@@ -78,15 +78,15 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
 
   UG_ButtonCreate( &window_1, &button_1, BTN_ID_0, 10, 10, 110, 60 );
   UG_ButtonSetFont( &window_1, BTN_ID_0, &FONT_SYSTEM_1 );
-  UG_ButtonSetText( &window_1, BTN_ID_0, "Font Sys1" );
+  UG_ButtonSetText( &window_1, BTN_ID_0, "Sys1 is a long text" ); // TODO: CLIP LONG TEXT
 
   UG_ButtonCreate( &window_1, &button_2, BTN_ID_1, 10, 80, 110, 130 );
   UG_ButtonSetFont( &window_1, BTN_ID_1, &FONT_SYSTEM_2 );
-  UG_ButtonSetText( &window_1, BTN_ID_1, "Button Sys2" );
+  UG_ButtonSetText( &window_1, BTN_ID_1, "Sys2" );
 
   UG_ButtonCreate( &window_1, &button_3, BTN_ID_2, 10, 150, 110, 200 );
   UG_ButtonSetFont( &window_1, BTN_ID_2, &FONT_SYSTEM_3 );
-  UG_ButtonSetText( &window_1, BTN_ID_2, "Button Sys3" );
+  UG_ButtonSetText( &window_1, BTN_ID_2, "Sys3" );
 
   UG_TextboxCreate( &window_1, &textbox_1, TXB_ID_0, 120, 10, 310, 200 );
   UG_TextboxSetFont( &window_1, TXB_ID_0, &FONT_8X12 );
