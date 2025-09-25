@@ -48,14 +48,15 @@ void window_1_callback( UG_MESSAGE* msg ) {
 
 #define MAX_OBJECTS 10
 
+UG_GUI gui;
+
 extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
   calcInit();
-
 
   struct InputEvent event;
 
   /* Initialize the GUI */
-  UG_GUI gui;
+  
   UG_Init( &gui, UGWrapper, width, height );
 
   UG_FontSelect( &FONT_8X8 );
@@ -117,6 +118,37 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
       case EVENT_KEY:
         if (event.data.key.keyCode == KEYCODE_POWER_CLEAR) {
           running = false;
+        } else if (event.data.key.direction == KEY_PRESSED) {
+          UG_WINDOW* active_wnd = &window_1; // gui.active_window;
+            if (active_wnd) {
+                switch(event.data.key.keyCode) {
+                    case KEYCODE_UP:
+                    case KEYCODE_LEFT:
+                        UG_Window_FocusNext(active_wnd, -1);
+                        UG_Update();
+                        break;
+                    case KEYCODE_DOWN:
+                    case KEYCODE_RIGHT:
+                        UG_Window_FocusNext(active_wnd, 1);
+                        UG_Update();
+                        break;
+                    case KEYCODE_EXE:
+                        if (active_wnd->focused_obj) {
+                            // Simulate a press and release to trigger the object's action
+                            active_wnd->focused_obj->event = OBJ_EVENT_PRESSED;
+                            _UG_HandleEvents(active_wnd); // Handle press
+                            active_wnd->focused_obj->event = OBJ_EVENT_RELEASED;
+                             _UG_HandleEvents(active_wnd); // Handle release
+                            active_wnd->focused_obj->event = OBJ_EVENT_CLICKED;
+                             _UG_HandleEvents(active_wnd); // Handle click
+                            UG_Update();
+                        }
+                        break;
+                    case KEYCODE_KEYBOARD:
+                        // TODO: implement keyboard ??
+                        break;
+                }
+            }
         }
         break;
     }

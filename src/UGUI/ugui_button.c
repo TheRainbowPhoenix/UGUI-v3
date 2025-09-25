@@ -545,6 +545,12 @@ void _UG_ButtonUpdate(UG_WINDOW* wnd, UG_OBJECT* obj)
           if ( !(btn->style & BTN_STYLE_NO_FILL) )
             UG_FillFrame(obj->a_abs.xs, obj->a_abs.ys, obj->a_abs.xe, obj->a_abs.ye, wnd->bc);
       }
+
+      if (obj->state & OBJ_STATE_FOCUSED)
+      {
+         UG_DrawFrame(obj->a_abs.xs + 2, obj->a_abs.ys + 2, obj->a_abs.xe - 2, obj->a_abs.ye - 2, C_BLACK);
+         UG_DrawFrame(obj->a_abs.xs + 3, obj->a_abs.ys + 3, obj->a_abs.xe - 3, obj->a_abs.ye - 3, btn->bc); // Erase inner part to create dotted effect
+      }
       obj->state &= ~OBJ_STATE_UPDATE;
    }
 }

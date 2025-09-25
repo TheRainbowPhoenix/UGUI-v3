@@ -644,6 +644,72 @@ UG_S16 UG_WindowGetOuterHeight( UG_WINDOW* wnd )
    return h;
 }
 
+/**
+ * @brief Sets focus to a specific object within a window.
+ * 
+ * @param wnd   The window containing the object.
+ * @param obj   The object to receive focus.
+ * @return UG_RESULT 
+ */
+UG_RESULT UG_Window_SetFocus(UG_WINDOW* wnd, UG_OBJECT* obj)
+{
+    if (!wnd || !obj) return UG_RESULT_FAIL;
+
+    // Unfocus the old object
+    if (wnd->focused_obj)
+    {
+        wnd->focused_obj->state &= ~OBJ_STATE_FOCUSED;
+        wnd->focused_obj->state |= OBJ_STATE_UPDATE | OBJ_STATE_REDRAW; // Force redraw to remove focus indicator
+    }
+
+    // Set focus to the new object
+    wnd->focused_obj = obj;
+    wnd->focused_obj->state |= OBJ_STATE_FOCUSED;
+    wnd->focused_obj->state |= OBJ_STATE_UPDATE | OBJ_STATE_REDRAW; // Force redraw to show focus indicator
+
+    return UG_RESULT_OK;
+}
+
+/**
+ * @brief Moves focus to the next/previous object in the window's object list.
+ * 
+ * @param wnd       The window to navigate.
+ * @param direction +1 for next, -1 for previous.
+ * @return UG_RESULT 
+ */
+UG_RESULT UG_Window_FocusNext(UG_WINDOW* wnd, UG_S8 direction)
+{
+    if (!wnd || wnd->objcnt == 0) return UG_RESULT_FAIL;
+
+    UG_S16 current_index = -1;
+    if (wnd->focused_obj) {
+        // Find current focused object index
+        for (UG_U8 i = 0; i < wnd->objcnt; i++) {
+            if (&wnd->objlst[i] == wnd->focused_obj) {
+                current_index = i;
+                break;
+            }
+        }
+    }
+
+    // Find the next focusable object
+    UG_U8 initial_index = (current_index == -1) ? 0 : current_index;
+    for (UG_U8 i = 1; i <= wnd->objcnt; i++)
+    {
+        UG_S16 next_index = (initial_index + i * direction + wnd->objcnt) % wnd->objcnt;
+        UG_OBJECT* next_obj = &wnd->objlst[next_index];
+        
+        // Check if the object is visible, enabled, and can be focused
+        if ((next_obj->state & OBJ_STATE_VISIBLE) && (next_obj->state & OBJ_STATE_VALID))
+        {
+            UG_Window_SetFocus(wnd, next_obj);
+            return UG_RESULT_OK;
+        }
+    }
+    return UG_RESULT_FAIL; // No focusable object found
+}
+
+
 UG_RESULT _UG_WindowDrawTitle( UG_WINDOW* wnd )
 {
    UG_TEXT txt;

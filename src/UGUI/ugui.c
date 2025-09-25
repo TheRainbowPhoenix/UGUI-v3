@@ -1033,7 +1033,7 @@ void _UG_ProcessTouchData( UG_WINDOW* wnd )
    UG_OBJECT* obj;
    UG_U8 objstate;
    UG_U8 objtouch;
-   UG_U8 tchstate;
+   UG_U16 tchstate;
 
    xp = gui->touch.xp;
    yp = gui->touch.yp;
@@ -1152,7 +1152,7 @@ UG_U32 _UG_ConvertRGB565ToRGB888(UG_U16 c)
    return (r | g | b);
 }
 
-static void _UG_HandleEvents( UG_WINDOW* wnd )
+void _UG_HandleEvents( UG_WINDOW* wnd )
 {
    UG_U16 i,objcnt;
    UG_OBJECT* obj;

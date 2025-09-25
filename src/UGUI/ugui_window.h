@@ -29,6 +29,7 @@ struct S_WINDOW
 {
    UG_U8 objcnt;
    UG_OBJECT* objlst;
+   UG_OBJECT* focused_obj;
    UG_U8 state;
    UG_COLOR fc;
    UG_COLOR bc;
@@ -106,5 +107,7 @@ UG_S16 UG_WindowGetInnerWidth( UG_WINDOW* wnd );
 UG_S16 UG_WindowGetOuterWidth( UG_WINDOW* wnd );
 UG_S16 UG_WindowGetInnerHeight( UG_WINDOW* wnd );
 UG_S16 UG_WindowGetOuterHeight( UG_WINDOW* wnd );
+UG_RESULT UG_Window_SetFocus(UG_WINDOW* wnd, UG_OBJECT* obj);
+UG_RESULT UG_Window_FocusNext(UG_WINDOW* wnd, UG_S8 direction);
 
 #endif

@@ -224,7 +224,7 @@ typedef struct
 /* Object structure */
 struct S_OBJECT
 {
-   UG_U8 state;                              /* object state                               */
+   UG_U16 state;                              /* object state                               */
    UG_U8 touch_state;                        /* object touch state                         */
    void (*update) (UG_WINDOW*,UG_OBJECT*);   /* pointer to object-specific update function */
    UG_AREA a_abs;                            /* absolute area of the object                */
@@ -260,6 +260,7 @@ struct S_OBJECT
 #define OBJ_STATE_UPDATE                              (1<<5)
 #define OBJ_STATE_REDRAW                              (1<<6)
 #define OBJ_STATE_TOUCH_ENABLE                        (1<<7)
+#define OBJ_STATE_FOCUSED                             (1<<8)
 #define OBJ_STATE_INIT                                (OBJ_STATE_FREE | OBJ_STATE_VALID)
 
 /* Object touch states */
@@ -331,6 +332,7 @@ void UG_ResetClipArea(void);
 void UG_GetClipArea(UG_AREA* a);
 
 /* Internal API functions */
+void _UG_HandleEvents( UG_WINDOW* wnd );
 void _UG_PutText( UG_TEXT* txt );
 UG_OBJECT* _UG_SearchObject( UG_WINDOW* wnd, UG_U8 type, UG_U8 id );
 void _UG_DrawObjectFrame( UG_S16 xs, UG_S16 ys, UG_S16 xe, UG_S16 ye, UG_COLOR* p );
