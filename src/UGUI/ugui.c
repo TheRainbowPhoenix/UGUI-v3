@@ -87,7 +87,7 @@ UG_S16 UG_Init( UG_GUI* g, void (*p)(UG_S16,UG_S16,UG_COLOR), UG_S16 x, UG_S16 y
    #ifdef USE_COLOR_RGB888
    g->desktop_color = 0x5E8BEf;
    #endif
-   #ifdef USE_COLOR_RGB565
+   #ifdef UGUI_USE_COLOR_RGB565
    g->desktop_color = 0x5C5D;
    #endif
    g->fore_color = C_WHITE;
@@ -695,7 +695,7 @@ const UG_COLOR pal_checkbox_released[] =
 };
 #endif
 
-#ifdef USE_COLOR_RGB565
+#ifdef UGUI_USE_COLOR_RGB565
 const UG_COLOR pal_window[] =
 {
    0x632C,
@@ -1489,7 +1489,7 @@ UG_RESULT UG_WindowCreate( UG_WINDOW* wnd, UG_OBJECT* objlst, UG_U8 objcnt, void
    wnd->fc = 0x000000;
    wnd->bc = 0xF0F0F0;
    #endif
-   #ifdef USE_COLOR_RGB565
+   #ifdef UGUI_USE_COLOR_RGB565
    wnd->fc = 0x0000;
    wnd->bc = 0xEF7D;
    #endif

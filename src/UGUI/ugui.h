@@ -21,35 +21,13 @@
 // #include "system.h"
 #include "ugui_config.h"
 
-// #include "ugui_colors.h"
-// #if !defined(UGUI_USE_CUSTOM_THEME)
-// #include "ugui_theme.h"
-// #else
-// #include "ugui_theme_custom.h"
-// #endif
+#include "ugui_colors.h"
 
-
-/* -------------------------------------------------------------------------------- */
-/* -- µGUI FONTS                                                                 -- */
-/* -- Source: http://www.mikrocontroller.net/user/show/benedikt                  -- */
-/* -------------------------------------------------------------------------------- */
-typedef enum
-{
-	FONT_TYPE_1BPP,
-	FONT_TYPE_8BPP,
-	FONT_TYPE_PEG
-} FONT_TYPE;
-
-typedef struct
-{
-   unsigned char* p;
-   FONT_TYPE font_type;
-   UG_S16 char_width;
-   UG_S16 char_height;
-   UG_U16 start_char;
-   UG_U16 end_char;
-   UG_U8  *widths;
-} UG_FONT;
+#if !defined(UGUI_USE_CUSTOM_THEME)
+#include "ugui_theme.h"
+#else
+#include "ugui_theme_custom.h"
+#endif
 
 /* -------------------------------------------------------------------------------- */
 /* -- TYPEDEFS                                                                   -- */
@@ -57,18 +35,39 @@ typedef struct
 typedef struct S_OBJECT                               UG_OBJECT;
 typedef struct S_WINDOW                               UG_WINDOW;
 typedef UG_S8                                         UG_RESULT;
-#ifdef USE_COLOR_RGB888
-typedef UG_U32                                        UG_COLOR;
+#if defined(UGUI_USE_COLOR_RGB888)
+typedef UG_U32                       UG_COLOR;
+#elif defined(UGUI_USE_COLOR_RGB565)
+typedef UG_U16                       UG_COLOR;
+#elif defined(UGUI_USE_COLOR_BW)
+typedef UG_U8                        UG_COLOR;
 #endif
-#ifdef USE_COLOR_RGB565
-typedef UG_U16                                        UG_COLOR;
+#if !defined(UGUI_USE_COLOR_RGB888) && !defined(UGUI_USE_COLOR_RGB565) && !defined(UGUI_USE_COLOR_BW)
+#error "You must define a color space!"
 #endif
+#if defined(UGUI_USE_COLOR_RGB888) && defined(UGUI_USE_COLOR_RGB565) || \
+      defined(UGUI_USE_COLOR_RGB888) && defined(UGUI_USE_COLOR_BW) || \
+      defined(UGUI_USE_COLOR_RGB565) && defined(UGUI_USE_COLOR_BW) || \
+      defined(UGUI_USE_COLOR_RGB888) && defined(UGUI_USE_COLOR_RGB565) && defined(UGUI_USE_COLOR_BW)
+#error "You must define only one color space!"
+#endif
+#if !defined(C_PAL_WINDOW)
+#error "You must define a theme!"
+#endif
+
 /* -------------------------------------------------------------------------------- */
 /* -- DEFINES                                                                    -- */
 /* -------------------------------------------------------------------------------- */
 #ifndef NULL
    #define NULL ((void*) 0)
 #endif
+/* Internal helpers */
+#define UG_GetFontWidth(f)                            *(f+1)
+#define UG_GetFontHeight(f)                           *(f+2)
+#define swap(a, b)                                    { UG_U16 t=a; a=b; b=t; }
+
+/* Sizing helpers */
+#define UGUI_POS(xs, ys, w, h)                        xs, ys, xs+w, ys+h
 
 /* Alignments */
 #define ALIGN_H_LEFT                                  (1<<0)
@@ -114,6 +113,30 @@ typedef UG_U16                                        UG_COLOR;
 /* -------------------------------------------------------------------------------- */
 #define UG_RESULT_FAIL                               -1
 #define UG_RESULT_OK                                  0
+
+
+/* -------------------------------------------------------------------------------- */
+/* -- FONTS                                                                      -- */
+/* -------------------------------------------------------------------------------- */
+
+/* Font structures */
+typedef enum
+{
+	FONT_TYPE_1BPP,
+	FONT_TYPE_8BPP,
+	FONT_TYPE_PEG
+} FONT_TYPE;
+
+typedef struct
+{
+   unsigned char* p;
+   FONT_TYPE font_type;
+   UG_S16 char_width;
+   UG_S16 char_height;
+   UG_U16 start_char;
+   UG_U16 end_char;
+   UG_U8  *widths;
+} UG_FONT;
 
 /* -------------------------------------------------------------------------------- */
 /* -- UNIVERSAL STRUCTURES                                                       -- */
@@ -172,7 +195,7 @@ typedef struct
    UG_U8 id;
    UG_U8 sub_id;
    UG_U8 event;
-   void* src;
+   void* src; // UG_OBJECT
 } UG_MESSAGE;
 
 /* Message types */
@@ -218,6 +241,7 @@ struct S_OBJECT
 #define OBJ_TYPE_TEXTBOX                              2
 #define OBJ_TYPE_IMAGE                                3
 #define OBJ_TYPE_CHECKBOX                             4
+// TODO: add more !!
 
 /* Standard object events */
 #define OBJ_EVENT_NONE                                0
@@ -551,7 +575,7 @@ typedef struct
 /* -- µGUI COLORS                                                                -- */
 /* -- Source: http://www.rapidtables.com/web/color/RGB_Color.htm                 -- */
 /* -------------------------------------------------------------------------------- */
-#ifdef USE_COLOR_RGB565
+#ifdef UGUI_USE_COLOR_RGB565
 #define C_MAROON                       0x8000
 #define C_DARK_RED                     0x8800
 #define C_BROWN                        0xA145
