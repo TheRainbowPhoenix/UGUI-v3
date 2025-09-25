@@ -20,7 +20,7 @@ typedef struct
    UG_COLOR bc;
    UG_COLOR afc;
    UG_COLOR abc;
-   UG_FONT* font;
+   const UG_FONT* font;
    UG_U8 align;
    UG_S8 h_space;
    UG_S8 v_space;

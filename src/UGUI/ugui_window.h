@@ -57,6 +57,10 @@ struct S_WINDOW
 #define WND_STYLE_SHOW_TITLE                          (1<<1)
 
 /* Window functions */
+UG_RESULT _UG_WindowDrawTitle( UG_WINDOW* wnd );
+void _UG_WindowUpdate( UG_WINDOW* wnd );
+UG_RESULT _UG_WindowClear( UG_WINDOW* wnd );
+
 UG_RESULT UG_WindowCreate( UG_WINDOW* wnd, UG_OBJECT* objlst, UG_U8 objcnt, void (*cb)( UG_MESSAGE* ) );
 UG_RESULT UG_WindowDelete( UG_WINDOW* wnd );
 UG_RESULT UG_WindowShow( UG_WINDOW* wnd );

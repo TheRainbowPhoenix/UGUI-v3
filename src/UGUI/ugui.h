@@ -241,10 +241,10 @@ struct S_OBJECT
 /* Standard object events */
 #define OBJ_EVENT_NONE                                0
 #define OBJ_EVENT_CLICKED                             1
-#ifdef USE_PRERENDER_EVENT
+#ifdef UGUI_USE_PRERENDER_EVENT
 #define OBJ_EVENT_PRERENDER                           2
 #endif
-#ifdef USE_POSTRENDER_EVENT
+#ifdef UGUI_USE_POSTRENDER_EVENT
 #define OBJ_EVENT_POSTRENDER                          3
 #endif
 #define OBJ_EVENT_PRESSED                             4
@@ -275,9 +275,10 @@ struct S_OBJECT
 
 #include "ugui_window.h"
 
+#include "ugui_fonts.h"
+
 #include "ugui_button.h"
 #include "ugui_checkbox.h"
-#include "ugui_fonts.h"
 #include "ugui_image.h"
 // #include "ugui_progress.h"
 #include "ugui_textbox.h"
@@ -291,6 +292,8 @@ struct S_OBJECT
 /* Classic functions */
 UG_S16 UG_Init( UG_GUI* g, void (*p)(UG_S16,UG_S16,UG_COLOR), UG_S16 x, UG_S16 y );
 UG_S16 UG_SelectGUI( UG_GUI* g );
+UG_GUI* UG_GetGUI( void );
+
 void UG_FontSelect( const UG_FONT* font );
 void UG_FillScreen( UG_COLOR c );
 void UG_FillFrame( UG_S16 x1, UG_S16 y1, UG_S16 x2, UG_S16 y2, UG_COLOR c );
@@ -325,6 +328,19 @@ void UG_SetClipArea(UG_AREA* a);
 void UG_ResetClipArea(void);
 void UG_GetClipArea(UG_AREA* a);
 
+/* Internal API functions */
+void _UG_PutText( UG_TEXT* txt );
+UG_OBJECT* _UG_SearchObject( UG_WINDOW* wnd, UG_U8 type, UG_U8 id );
+void _UG_DrawObjectFrame( UG_S16 xs, UG_S16 ys, UG_S16 xe, UG_S16 ye, UG_COLOR* p );
+UG_OBJECT* _UG_GetFreeObject( UG_WINDOW* wnd );
+UG_RESULT _UG_DeleteObject( UG_WINDOW* wnd, UG_U8 type, UG_U8 id );
+#ifdef UGUI_USE_PRERENDER_EVENT
+void _UG_SendObjectPrerenderEvent(UG_WINDOW *wnd,UG_OBJECT *obj);
+#endif
+#ifdef UGUI_USE_POSTRENDER_EVENT
+void _UG_SendObjectPostrenderEvent(UG_WINDOW *wnd,UG_OBJECT *obj);
+#endif
+UG_U32 _UG_ConvertRGB565ToRGB888(UG_U16 c);
 
 
 

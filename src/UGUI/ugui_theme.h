@@ -52,7 +52,8 @@
 
 #define C_PAL_PROGRESS                 C_PAL_BUTTON_RELEASED
 
-#elif defined(UGUI_USE_COLOR_RGB565)
+#else
+// #elif defined(UGUI_USE_COLOR_RGB565)
 
 #define C_DESKTOP_COLOR                0x5C5D
 #define C_FORE_COLOR                   C_BLACK
@@ -101,7 +102,9 @@
 
 #define C_PAL_PROGRESS                 C_PAL_BUTTON_RELEASED
 
-#elif defined(UGUI_USE_COLOR_BW)
+#endif
+
+#if defined(UGUI_USE_COLOR_BW)
 
 #define C_DESKTOP_COLOR                C_BLACK
 #define C_FORE_COLOR                   C_BLACK

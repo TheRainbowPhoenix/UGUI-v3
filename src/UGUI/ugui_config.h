@@ -58,8 +58,8 @@ typedef signed long int       UG_S32;
 
 
 /* Feature enablers */
-#define USE_PRERENDER_EVENT
-#define USE_POSTRENDER_EVENT
+#define UGUI_USE_PRERENDER_EVENT
+#define UGUI_USE_POSTRENDER_EVENT
 
 
 #endif

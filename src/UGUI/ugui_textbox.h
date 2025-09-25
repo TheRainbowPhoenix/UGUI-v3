@@ -10,7 +10,7 @@
 typedef struct
 {
    char* str;
-   UG_FONT* font;
+   const UG_FONT* font;
    UG_U8 style;
    UG_COLOR fc;
    UG_COLOR bc;
