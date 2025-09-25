@@ -6,7 +6,7 @@
 /* -- Source: http://www.rapidtables.com/web/color/RGB_Color.htm                 -- */
 /* -------------------------------------------------------------------------------- */
 
-#if defined(UGUI_UGUI_USE_COLOR_RGB565)
+#if defined(UGUI_USE_COLOR_RGB565)
 
 #define C_MAROON                     0x8000
 #define C_DARK_RED                   0x8800
