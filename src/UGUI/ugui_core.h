@@ -39,7 +39,7 @@ typedef struct
    UG_DRIVER driver[NUMBER_OF_DRIVERS];
 } UG_GUI;
 
-#define UG_SATUS_WAIT_FOR_UPDATE                      (1<<0)
+#define UG_STATUS_WAIT_FOR_UPDATE                      (1<<0)
 
 
 #endif
