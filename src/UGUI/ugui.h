@@ -17,8 +17,16 @@
 #ifndef __UGUI_H
 #define __UGUI_H
 
+#include <stdlib.h>
 // #include "system.h"
 #include "ugui_config.h"
+
+// #include "ugui_colors.h"
+// #if !defined(UGUI_USE_CUSTOM_THEME)
+// #include "ugui_theme.h"
+// #else
+// #include "ugui_theme_custom.h"
+// #endif
 
 
 /* -------------------------------------------------------------------------------- */
@@ -42,58 +50,6 @@ typedef struct
    UG_U16 end_char;
    UG_U8  *widths;
 } UG_FONT;
-
-#ifdef USE_FONT_4X6
-   extern const UG_FONT FONT_4X6;
-#endif
-#ifdef USE_FONT_5X8
-   extern const UG_FONT FONT_5X8;
-#endif
-#ifdef USE_FONT_5X12
-   extern const UG_FONT FONT_5X12;
-#endif
-#ifdef USE_FONT_6X8
-   extern const UG_FONT FONT_6X8;
-#endif
-#ifdef USE_FONT_6X10
-   extern const UG_FONT FONT_6X10;
-#endif
-#ifdef USE_FONT_7X12
-   extern const UG_FONT FONT_7X12;
-#endif
-#ifdef USE_FONT_8X8
-   extern const UG_FONT FONT_8X8;
-#endif
-#ifdef USE_FONT_8X12
-   extern const UG_FONT FONT_8X12;
-#endif
-#ifdef USE_FONT_8X12_CYRILLIC
-   extern const UG_FONT FONT_8X12;
-#endif
-#ifdef USE_FONT_8X14
-   extern const UG_FONT FONT_8X14;
-#endif
-#ifdef USE_FONT_10X16
-   extern const UG_FONT FONT_10X16;
-#endif
-#ifdef USE_FONT_12X16
-   extern const UG_FONT FONT_12X16;
-#endif
-#ifdef USE_FONT_12X20
-   extern const UG_FONT FONT_12X20;
-#endif
-#ifdef USE_FONT_16X26
-   extern const UG_FONT FONT_16X26;
-#endif
-#ifdef USE_FONT_22X36
-   extern const UG_FONT FONT_22X36;
-#endif
-#ifdef USE_FONT_24X40
-   extern const UG_FONT FONT_24X40;
-#endif
-#ifdef USE_FONT_32X53
-   extern const UG_FONT FONT_32X53;
-#endif
 
 /* -------------------------------------------------------------------------------- */
 /* -- TYPEDEFS                                                                   -- */
@@ -878,6 +834,8 @@ typedef struct
 #define  C_WHITE_SMOKE                0xF5F5F5
 #define  C_WHITE                      0xFFFFFF
 #endif
+
+#include "ugui_fonts.h"
 
 /* -------------------------------------------------------------------------------- */
 /* -- PROTOTYPES                                                                 -- */

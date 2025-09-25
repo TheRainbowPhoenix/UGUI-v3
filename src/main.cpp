@@ -7,7 +7,6 @@
 extern "C" {
   #include "UGUI/ugui_config.h"
   #include "UGUI/ugui.h"
-  #include "UGUI/Fonts/system_font.h"
 }
 
 APP_NAME("UGUI Test")
