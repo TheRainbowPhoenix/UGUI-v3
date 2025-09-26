@@ -283,13 +283,14 @@ struct S_OBJECT
 #include "ugui_image.h"
 #include "ugui_progress.h"
 #include "ugui_textbox.h"
+#include "ugui_slider.h"
 
 #include "ugui_inputfield.h"
 
 #include "ugui_driver.h"
 #include "ugui_core.h"
 
-#include "ugui_keyboard.h"
+#include "ugui_oskeyboard.h"
 
 /* -------------------------------------------------------------------------------- */
 /* -- PROTOTYPES                                                                 -- */

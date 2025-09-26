@@ -63,6 +63,9 @@
 #define C_INACTIVE_TITLE_FORE_COLOR    C_WHITE
 #define C_INACTIVE_TITLE_BACK_COLOR    C_GRAY
 
+#define C_PAL_SLIDER_TRACK    C_DARK_GRAY, C_GRAY, C_WHITE
+#define C_PAL_SLIDER_HANDLE   C_WHITE, C_LIGHT_GRAY, C_DARK_GRAY
+
 
 #define C_PAL_WINDOW                   /* Frame 0 */ \
                                        C_WHITE_39,   \
