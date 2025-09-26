@@ -844,10 +844,9 @@ void _UG_PutChar( char chr, UG_S16 x, UG_S16 y, UG_COLOR fc, UG_COLOR bc, const 
             xo = x;
             for (i = 0; i < actual_char_width; i++) {
                if (
-                  1 
-                  // TODO: Fix the clip checks 
-                  // && xo >= gui->clip.xs && xo <= gui->clip.xe
-                  // && (yo + j) >= gui->clip.ys && (yo + j) <= gui->clip.ye
+                  1
+                  // xo >= gui->clip.xs && xo <= gui->clip.xe 
+                  // && yo >= gui->clip.ys && yo <= gui->clip.ye
                )
                {
                   if (scanline_buffer[i]) {

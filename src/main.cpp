@@ -1,6 +1,7 @@
 #include <appdef.hpp>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sdk/calc/calc.hpp>
 #include <sdk/os/input.hpp>
 
@@ -11,8 +12,10 @@ extern "C" {
 
 APP_NAME("UGUI Test")
 APP_DESCRIPTION("UGUI Test")
-APP_AUTHOR("s3ansh33p")
+APP_AUTHOR("s3ansh33p & PC")
 APP_VERSION("1.0.0")
+
+#define INPUT_BUFFER_SIZE 50
 
 // wrapper for setPixel
 void UGWrapper(UG_S16 x, UG_S16 y, UG_COLOR color) {
@@ -22,6 +25,12 @@ void UGWrapper(UG_S16 x, UG_S16 y, UG_COLOR color) {
 void window_1_callback( UG_MESSAGE* msg ) {
   if ( msg->type == MSG_TYPE_OBJECT ) {
     switch( msg->id ) {
+      case OBJ_TYPE_INPUT_FIELD: {
+        if ( msg->event == EVENT_INPUTFIELD_CLICKED ) {
+          UG_KeyboardShow((UG_OBJECT*)msg->src);
+        }
+        break;
+      }
       case OBJ_TYPE_BUTTON: {
         if ( msg->event == OBJ_EVENT_PRESSED ) {
           switch( msg->sub_id ) {
@@ -32,6 +41,7 @@ void window_1_callback( UG_MESSAGE* msg ) {
             case BTN_ID_1:
               // fputs("Button 2 pressed\n", stdout);
               UG_PutString(10, 250, "Button 2 pressed");
+              UG_KeyboardShow((UG_OBJECT*)msg->src);
               break;
             case BTN_ID_2:
               // fputs("Button 3 pressed\n", stdout);
@@ -59,13 +69,18 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
   
   UG_Init( &gui, UGWrapper, width, height );
 
+  UG_KeyboardInit(&gui);
+
   UG_FontSelect( &FONT_8X8 );
+
+  char g_input_buffer[INPUT_BUFFER_SIZE];
 
   UG_WINDOW window_1;
   UG_BUTTON button_1;
   UG_BUTTON button_2;
   UG_BUTTON button_3;
   UG_TEXTBOX textbox_1;
+  UG_INPUT_FIELD input_field_1;
   UG_OBJECT obj_buff_wnd_1[MAX_OBJECTS];
 
   // fill background
@@ -94,7 +109,14 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
   UG_TextboxSetForeColor( &window_1, TXB_ID_0, C_BLACK );
   UG_TextboxSetAlignment( &window_1, TXB_ID_0, ALIGN_CENTER );
 
+  // UG_FontSelect( &FONT_8X8 );
+
   UG_FontSelect(&FONT_SYSTEM_1);
+
+  UG_InputFieldCreate( &window_1, &input_field_1, INPUT_ID_0, 120, 40, 280, 80, g_input_buffer, sizeof(g_input_buffer));
+  UG_InputFieldSetText(&window_1, INPUT_ID_0, "Click me!");
+  // UG_InputFieldCreate(&window_1, &input_field_1, INF_ID_0, 120, 210, 310, 240, my_input_buffer, INPUT_BUFFER_SIZE);
+  // UG_InputFieldSetText(&window_1, INF_ID_0, "Hello!"); // Optional initial text
 
   UG_WindowShow( &window_1 );
 
