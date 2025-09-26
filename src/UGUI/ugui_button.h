@@ -97,5 +97,6 @@ UG_U8 UG_ButtonGetStyle( UG_WINDOW* wnd, UG_U8 id );
 UG_S8 UG_ButtonGetHSpace( UG_WINDOW* wnd, UG_U8 id );
 UG_S8 UG_ButtonGetVSpace( UG_WINDOW* wnd, UG_U8 id );
 UG_U8 UG_ButtonGetAlignment( UG_WINDOW* wnd, UG_U8 id );
+UG_RESULT UG_ButtonResize( UG_WINDOW* wnd, UG_U8 id, UG_S16 xs, UG_S16 ys, UG_S16 xe, UG_S16 ye );
 
 #endif

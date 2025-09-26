@@ -426,6 +426,24 @@ UG_U8 UG_ButtonGetAlignment( UG_WINDOW* wnd, UG_U8 id )
    return align;
 }
 
+UG_RESULT UG_ButtonResize( UG_WINDOW* wnd, UG_U8 id, UG_S16 xs, UG_S16 ys, UG_S16 xe, UG_S16 ye )
+{
+   UG_OBJECT* obj=NULL;
+
+   obj = _UG_SearchObject( wnd, OBJ_TYPE_BUTTON, id );
+   if ( obj == NULL ) return UG_RESULT_FAIL;
+
+   // Update the relative coordinates of the button
+   obj->a_rel.xs = xs;
+   obj->a_rel.ys = ys;
+   obj->a_rel.xe = xe;
+   obj->a_rel.ye = ye;
+
+   // Mark the object for a full update and redraw
+   obj->state |= OBJ_STATE_UPDATE | OBJ_STATE_REDRAW;
+
+   return UG_RESULT_OK;
+}
 
 void _UG_ButtonUpdate(UG_WINDOW* wnd, UG_OBJECT* obj)
 {

@@ -155,3 +155,37 @@ char* UG_InputFieldGetText(UG_WINDOW* wnd, UG_U8 id)
    UG_INPUT_FIELD* inf = (UG_INPUT_FIELD*)obj->data;
    return inf->text;
 }
+
+// Add these to ugui_inputfield.c
+UG_RESULT UG_InputFieldShow(UG_WINDOW* wnd, UG_U8 id)
+{
+   UG_OBJECT* obj = _UG_SearchObject( wnd, OBJ_TYPE_INPUT_FIELD, id );
+   if (obj == NULL) return UG_RESULT_FAIL;
+   obj->state |= OBJ_STATE_VISIBLE | OBJ_STATE_UPDATE | OBJ_STATE_REDRAW;
+   return UG_RESULT_OK;
+}
+
+UG_RESULT UG_InputFieldHide(UG_WINDOW* wnd, UG_U8 id)
+{
+   UG_OBJECT* obj = _UG_SearchObject( wnd, OBJ_TYPE_INPUT_FIELD, id );
+   if (obj == NULL) return UG_RESULT_FAIL;
+   obj->state &= ~OBJ_STATE_VISIBLE;
+   obj->state |= OBJ_STATE_UPDATE;
+   return UG_RESULT_OK;
+}
+
+UG_RESULT UG_InputFieldAssignBuffer(UG_WINDOW* wnd, UG_U8 id, char* buffer, UG_U16 buffer_len)
+{
+   UG_OBJECT* obj = _UG_SearchObject(wnd, OBJ_TYPE_INPUT_FIELD, id);
+   if (obj == NULL) return UG_RESULT_FAIL;
+   
+   UG_INPUT_FIELD* inf = (UG_INPUT_FIELD*)obj->data;
+   inf->text = buffer;
+   inf->max_len = buffer_len;
+   if (buffer) {
+       buffer[0] = '\0';
+       inf->text_len = 0;
+   }
+   obj->state |= OBJ_STATE_UPDATE | OBJ_STATE_REDRAW;
+   return UG_RESULT_OK;
+}

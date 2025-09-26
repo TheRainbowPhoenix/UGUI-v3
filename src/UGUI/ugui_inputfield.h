@@ -99,4 +99,8 @@ UG_RESULT UG_InputFieldSetText(UG_WINDOW* wnd, UG_U8 id, char* str);
  */
 char* UG_InputFieldGetText(UG_WINDOW* wnd, UG_U8 id);
 
+UG_RESULT UG_InputFieldHide(UG_WINDOW* wnd, UG_U8 id);
+UG_RESULT UG_InputFieldShow(UG_WINDOW* wnd, UG_U8 id);
+UG_RESULT UG_InputFieldAssignBuffer(UG_WINDOW* wnd, UG_U8 id, char* buffer, UG_U16 buffer_len);
+
 #endif // __UGUI_INPUTFIELD_H
