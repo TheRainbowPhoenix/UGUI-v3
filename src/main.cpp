@@ -17,22 +17,28 @@ APP_AUTHOR("s3ansh33p & PC")
 APP_VERSION("1.0.0")
 
 #define INPUT_BUFFER_SIZE 50
-#define PROMPT_BUFFER_SIZE 30 
+#define PROMPT_BUFFER_SIZE 30
+#define PROMPT_RESULT_BUFFER_SIZE (PROMPT_BUFFER_SIZE + 32)
 
 #define MAX_OBJECTS 10
 
+static UG_WINDOW window_1;
+static UG_BUTTON button_1;
+static UG_BUTTON button_2;
+static UG_BUTTON button_3;
+static UG_TEXTBOX textbox_1;
+static UG_INPUT_FIELD input_field_1;
+static UG_SLIDER slider_1; // Horizontal slider
+static UG_SLIDER slider_2; // Vertical slider
+static char g_input_buffer[INPUT_BUFFER_SIZE];
+static char prompt_buffer[PROMPT_BUFFER_SIZE];
+static char prompt_result_display[PROMPT_RESULT_BUFFER_SIZE];
+static char info_acknowledged_text[] = "Information acknowledged.";
+static char confirm_yes_text[] = "You selected Yes.";
+static char confirm_no_text[] = "You selected No.";
+static char prompt_cancelled_text[] = "Prompt cancelled.";
+
 UG_GUI gui;
-
-UG_WINDOW window_1;
-UG_BUTTON button_1;
-UG_BUTTON button_2;
-UG_BUTTON button_3;
-UG_TEXTBOX textbox_1;
-UG_INPUT_FIELD input_field_1;
-UG_SLIDER slider_1; // Horizontal slider
-UG_SLIDER slider_2; // Vertical slider
-UG_OBJECT obj_buff_wnd_1[MAX_OBJECTS];
-
 
 // TODO: move to a special class
 #define MAX_DIALOG_OBJECTS 3 
@@ -102,8 +108,6 @@ void ShowMessageBox(const char *message, const char *title) {
   LCD_Refresh();
 }
 
-static char prompt_buffer[PROMPT_BUFFER_SIZE];
-
 void window_1_callback(UG_MESSAGE *msg) {
   if (msg->type == MSG_TYPE_OBJECT) {
     switch (msg->id) {
@@ -122,20 +126,25 @@ void window_1_callback(UG_MESSAGE *msg) {
         case BTN_ID_0:
           // UG_MessageBoxShow("This is an information box.", "Info", MB_TYPE_INFO, NULL, 0);
           // fputs("Button 1 pressed\n", stdout);
-          UG_PutString(10, 250, "Button 1 pressed");
+          // UG_PutString(10, 250, "Button 1 pressed");
+          UG_MessageBox_ShowInfo("Button 1 pressed", "Information");
           break;
         case BTN_ID_1:
           // UG_MessageBoxShow("Please enter your name:", "Prompt", MB_TYPE_PROMPT, prompt_buffer, PROMPT_BUFFER_SIZE);
           // fputs("Button 2 pressed\n", stdout);
-          UG_PutString(10, 250, "Button 2 pressed");
+          // UG_PutString(10, 250, "Button 2 pressed");
           // UG_Window_SetFocus(wnd, input_obj);
-          UG_OSKeyboard_Show();
+          // UG_OSKeyboard_Show();
+          UG_MessageBox_ShowPrompt("Please enter your name:", "Prompt",
+                                   prompt_buffer, PROMPT_BUFFER_SIZE);
           break;
         case BTN_ID_2:
           // fputs("Button 3 pressed\n", stdout);
           // UG_MessageBoxShow("Do you want to continue?", "Confirmation", MB_TYPE_CONFIRM, NULL, 0);
-          UG_PutString(10, 250, "Button 3 pressed");
-          ShowMessageBox("Do you want to continue?", "Confirmation");
+          // UG_PutString(10, 250, "Button 3 pressed");
+          // ShowMessageBox("Do you want to continue?", "Confirmation");
+          UG_MessageBox_ShowConfirm("Do you want to continue?",
+                                    "Confirmation");
           break;
         }
         LCD_Refresh();
@@ -201,7 +210,16 @@ void keyboard_event_handler(UG_KEYBOARD_EVENT *event) {
 
   case VKEY_ENTER:
     snprintf(msg_buffer, sizeof(msg_buffer), "Enter");
-    UG_TextboxSetText(gui.active_window, TXB_ID_0, msg_buffer);
+    if (UG_MessageBox_IsActive() &&
+        UG_MessageBox_GetActiveStyle() == UG_MESSAGEBOX_STYLE_PROMPT) {
+      UG_MessageBox_SubmitPrimary();
+      UG_Update();
+      LCD_Refresh();
+    } else {
+      snprintf(msg_buffer, sizeof(msg_buffer), "Enter");
+      UG_TextboxSetText(gui.active_window, TXB_ID_0, msg_buffer);
+      // Handle enter - could submit form, move to next field, etc.
+    }
     // Handle enter - could submit form, move to next field, etc.
     break;
 
@@ -240,6 +258,8 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
 
   UG_FontSelect(&FONT_8X8);
 
+  UG_MessageBox_Init(&gui);
+
   UG_KEYBOARD_CONFIG kb_config;
   UG_OSKeyboard_GetDefaultConfig(&kb_config);
   kb_config.bg_color = C_WHITE;
@@ -249,6 +269,7 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
   UG_OSKeyboard_Configure(&kb_config);
 
   char g_input_buffer[INPUT_BUFFER_SIZE];
+  UG_OBJECT obj_buff_wnd_1[MAX_OBJECTS];
 
   // fill background
   UG_FillScreen(C_BLACK);
@@ -315,6 +336,9 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
                       g_input_buffer, sizeof(g_input_buffer));
   UG_InputFieldSetText(&window_1, INPUT_ID_0, "Click me!");
 
+  prompt_buffer[0] = '\0';
+  prompt_result_display[0] = '\0';
+
   // TODO: move to another file ?
    // Center the dialog window
   UG_S16 dialog_w = 310;
@@ -358,6 +382,34 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
 
   bool running = true;
   while (running) {
+    UG_MESSAGEBOX_RESULT message_result = UG_MessageBox_GetResult();
+    if (message_result != UG_MESSAGEBOX_RESULT_NONE) {
+      UG_MESSAGEBOX_STYLE style = UG_MessageBox_GetLastStyle();
+      switch (style) {
+      case UG_MESSAGEBOX_STYLE_INFO:
+        UG_TextboxSetText(&window_1, TXB_ID_0, info_acknowledged_text);
+        break;
+      case UG_MESSAGEBOX_STYLE_CONFIRM:
+        if (message_result == UG_MESSAGEBOX_RESULT_YES) {
+          UG_TextboxSetText(&window_1, TXB_ID_0, confirm_yes_text);
+        } else {
+          UG_TextboxSetText(&window_1, TXB_ID_0, confirm_no_text);
+        }
+        break;
+      case UG_MESSAGEBOX_STYLE_PROMPT:
+        if (message_result == UG_MESSAGEBOX_RESULT_OK) {
+          snprintf(prompt_result_display, sizeof(prompt_result_display),
+                   "Hello, %s!", prompt_buffer);
+          UG_TextboxSetText(&window_1, TXB_ID_0, prompt_result_display);
+        } else {
+          UG_TextboxSetText(&window_1, TXB_ID_0, prompt_cancelled_text);
+        }
+        break;
+      }
+      UG_Update();
+      LCD_Refresh();
+    }
+
     GetInput(&event, 0xFFFFFFFF, 0x10); // polls
 
     if (!dialog_active && dialog_result != 0) {
@@ -408,8 +460,10 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
       } else if (event.data.key.direction == KEY_PRESSED) {
         // Handle hardware keyboard toggle
         if (event.data.key.keyCode == KEYCODE_KEYBOARD) {
-          UG_OSKeyboard_Toggle();
-          UG_Update();
+          if (!UG_MessageBox_IsActive()) {
+            UG_OSKeyboard_Toggle();
+            UG_Update();
+          }
           break;
         }
 
@@ -420,7 +474,7 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
           UG_Update();
           break;
         }
-        UG_WINDOW *current_wnd = dialog_active ? &window_dialog : &window_1;
+        UG_WINDOW *current_wnd = UG_MessageBox_IsActive() ? UG_MessageBox_GetWindow() : &window_1;
         if (current_wnd) {
           switch (event.data.key.keyCode) {
           case KEYCODE_UP:
@@ -461,8 +515,10 @@ extern "C" int __attribute__((section(".bootstrap.text"))) main(void) {
             }
             break;
           case KEYCODE_KEYBOARD:
-                if(!dialog_active) UG_OSKeyboard_Toggle();
-            UG_Update();
+            if (!UG_MessageBox_IsActive()) {
+              UG_OSKeyboard_Toggle();
+              UG_Update();
+            }
             // TODO: update ?
             break;
           }

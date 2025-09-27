@@ -1,195 +1,415 @@
-#include "ugui_messagebox.h"
 #include <string.h>
+#include "ugui_config.h"
+#include "ugui_messagebox.h"
 
-/* -------------------------------------------------------------------------------- */
-/* -- PRIVATE DEFINES & VARS                                                     -- */
-/* -------------------------------------------------------------------------------- */
-#define MAX_MB_OBJECTS 4 // Textbox, Button1, Button2, InputField
+#include "ugui_button.h"
+#include "ugui_inputfield.h"
+#include "ugui_oskeyboard.h"
+#include "ugui_textbox.h"
+#include "ugui_window.h"
+#include "ugui_fonts.h"
 
-// IDs for internal objects
-#define MB_BTN_ID_1    0 // Corresponds to OK / Yes
-#define MB_BTN_ID_2    1 // Corresponds to No / Cancel
-#define MB_TXB_ID      0
-#define MB_INP_ID      0
+#define MB_MAX_OBJECTS 5
+#define MB_TEXTBOX_ID OBJ_ID_0
+#define MB_PRIMARY_BUTTON_ID OBJ_ID_1
+#define MB_SECONDARY_BUTTON_ID OBJ_ID_2
+#define MB_INPUT_ID OBJ_ID_3
 
-// Global state for the message box module
-static UG_GUI*     g_gui_ptr = NULL;
-static UG_WINDOW   g_mb_window;
-static UG_OBJECT   g_mb_objects[MAX_MB_OBJECTS];
-static UG_BUTTON   g_mb_button1;
-static UG_BUTTON   g_mb_button2;
-static UG_TEXTBOX  g_mb_textbox;
-static UG_INPUT_FIELD g_mb_input;
+#define MB_DIALOG_WIDTH 310
+#define MB_DIALOG_HEIGHT 140
+#define MB_TEXTBOX_XS 5
+#define MB_TEXTBOX_YS 5
+#define MB_TEXTBOX_XE (MB_DIALOG_WIDTH - 10)
+#define MB_TEXTBOX_YE 50
+#define MB_BUTTON_WIDTH 96
+#define MB_BUTTON_HEIGHT 40
+#define MB_BUTTON_PADDING 6
+#define MB_BUTTON_X_PRIMARY MB_BUTTON_PADDING
+#define MB_BUTTON_X_SECONDARY (MB_DIALOG_WIDTH - (MB_BUTTON_PADDING * 2) - MB_BUTTON_WIDTH)
+#define MB_BUTTON_Y_CONFIRM 66
+#define MB_BUTTON_Y_PROMPT (MB_DIALOG_HEIGHT - MB_BUTTON_HEIGHT - MB_BUTTON_PADDING)
+#define MB_INPUTFIELD_XS MB_BUTTON_PADDING
+#define MB_INPUTFIELD_YS (MB_TEXTBOX_YE + 8)
+#define MB_INPUTFIELD_XE (MB_DIALOG_WIDTH - MB_BUTTON_PADDING)
+#define MB_INPUTFIELD_YE (MB_BUTTON_Y_PROMPT - 8)
+#define MB_PROMPT_BUFFER_LENGTH 64
 
-static volatile bool      g_is_active = false;
-static volatile MB_RESULT g_result = MB_RES_NONE;
-static MB_TYPE            g_current_type;
+static UG_GUI *mb_gui = NULL;
+static UG_WINDOW mb_window;
+static UG_OBJECT mb_objects[MB_MAX_OBJECTS];
+static UG_BUTTON mb_primary_button;
+static UG_BUTTON mb_secondary_button;
+static UG_TEXTBOX mb_textbox;
+static UG_INPUT_FIELD mb_input_field;
+static char mb_prompt_buffer[MB_PROMPT_BUFFER_LENGTH];
 
-// Pointer to the external buffer for prompt mode
-static char* g_prompt_buffer_ptr = NULL;
+static struct {
+    UG_U8 active;
+    UG_WINDOW *previous_window;
+    UG_MESSAGEBOX_STYLE style;
+    UG_MESSAGEBOX_STYLE last_style;
+    UG_MESSAGEBOX_RESULT result;
+    char *prompt_target;
+    UG_U16 prompt_target_length;
+} mb_state = {0};
 
-
-/* -------------------------------------------------------------------------------- */
-/* -- PRIVATE FUNCTIONS                                                          -- */
-/* -------------------------------------------------------------------------------- */
-
-// Callback function for the message box window
-static void _messagebox_callback(UG_MESSAGE* msg) {
-    if (msg->type != MSG_TYPE_OBJECT || msg->id != OBJ_TYPE_BUTTON) {
+static void mb_set_object_visibility(UG_WINDOW *wnd, UG_U8 type, UG_U8 id, UG_U8 visible)
+{
+    UG_OBJECT *obj = _UG_SearchObject(wnd, type, id);
+    if (obj == NULL) {
         return;
     }
 
-    if (msg->event == OBJ_EVENT_CLICKED || msg->event == OBJ_EVENT_PRESSED) {
-        switch (msg->sub_id) {
-            case MB_BTN_ID_1: // OK or Yes
-                if (g_current_type == MB_TYPE_INFO)   g_result = MB_RES_OK;
-                if (g_current_type == MB_TYPE_CONFIRM) g_result = MB_RES_YES;
-                if (g_current_type == MB_TYPE_PROMPT)  g_result = MB_RES_OK;
-                break;
-
-            case MB_BTN_ID_2: // No or Cancel
-                if (g_current_type == MB_TYPE_CONFIRM) g_result = MB_RES_NO;
-                if (g_current_type == MB_TYPE_PROMPT)  g_result = MB_RES_CANCEL;
-                break;
-        }
-        
-        if (g_result != MB_RES_NONE) {
-            g_is_active = false;
-        }
+    if (visible) {
+        obj->state |= (OBJ_STATE_VISIBLE | OBJ_STATE_UPDATE | OBJ_STATE_REDRAW);
+    } else {
+        obj->state &= ~OBJ_STATE_VISIBLE;
+        obj->state |= (OBJ_STATE_UPDATE | OBJ_STATE_REDRAW);
     }
 }
 
-/* -------------------------------------------------------------------------------- */
-/* -- PUBLIC API IMPLEMENTATION                                                  -- */
-/* -------------------------------------------------------------------------------- */
-
-UG_RESULT UG_MessageBoxInit(UG_GUI* gui) {
-    if (!gui) return UG_RESULT_FAIL;
-    g_gui_ptr = gui;
-
-    // Create the window (but don't show it)
-    UG_WindowCreate(&g_mb_window, g_mb_objects, MAX_MB_OBJECTS, _messagebox_callback);
-    UG_WindowSetTitleTextFont(&g_mb_window, &FONT_SYSTEM_1);
-
-    // Create all potential objects
-    // 1. Textbox for the message
-    UG_TextboxCreate(&g_mb_window, &g_mb_textbox, MB_TXB_ID, 5, 5, 235, 50);
-    UG_TextboxSetFont(&g_mb_window, MB_TXB_ID, &FONT_8X12);
-    UG_TextboxSetAlignment(&g_mb_window, MB_TXB_ID, ALIGN_CENTER);
-
-    // 2. Button 1 (OK / Yes)
-    UG_ButtonCreate(&g_mb_window, &g_mb_button1, MB_BTN_ID_1, 0, 0, 0, 0); // Pos will be set later
-    UG_ButtonSetFont(&g_mb_window, MB_BTN_ID_1, &FONT_SYSTEM_1);
-
-    // 3. Button 2 (No / Cancel)
-    UG_ButtonCreate(&g_mb_window, &g_mb_button2, MB_BTN_ID_2, 0, 0, 0, 0); // Pos will be set later
-    UG_ButtonSetFont(&g_mb_window, MB_BTN_ID_2, &FONT_SYSTEM_1);
-    
-    // 4. Input Field (for Prompt)
-    UG_InputFieldCreate(&g_mb_window, &g_mb_input, MB_INP_ID, 10, 55, 230, 85, NULL, 0);
-
-    return UG_RESULT_OK;
-}
-
-UG_RESULT UG_MessageBoxShow(const char* message, const char* title, MB_TYPE type, char* prompt_buffer, int prompt_buffer_size) {
-    if (g_is_active) return UG_RESULT_FAIL;
-
-    g_is_active = true;
-    g_result = MB_RES_NONE;
-    g_current_type = type;
-
-    // --- Configure Window & Text ---
-    UG_S16 win_w = 260;
-    UG_S16 win_h = (type == MB_TYPE_PROMPT) ? 150 : 120;
-    UG_S16 win_x = (g_gui_ptr->x_dim - win_w) / 2;
-    UG_S16 win_y = (g_gui_ptr->y_dim - win_h) / 2;
-
-    UG_WindowResize(&g_mb_window, win_x, win_y, win_x + win_w, win_y + win_h);
-    UG_WindowSetTitleText(&g_mb_window, (char*)title);
-    UG_TextboxSetText(&g_mb_window, MB_TXB_ID, (char*)message);
-
-    // --- Configure Objects based on Type ---
-    UG_S16 btn_w = 80;
-    UG_S16 btn_h = 35;
-    UG_S16 btn_y = win_h - btn_h - 15;
-
-    switch (type) {
-        case MB_TYPE_INFO:
-            // Single "OK" button, centered
-            UG_ButtonResize(&g_mb_window, MB_BTN_ID_1, (win_w - btn_w) / 2, btn_y, (win_w + btn_w) / 2, btn_y + btn_h);
-            UG_ButtonSetText(&g_mb_window, MB_BTN_ID_1, "OK");
-            UG_ButtonShow(&g_mb_window, MB_BTN_ID_1);
-            UG_ButtonHide(&g_mb_window, MB_BTN_ID_2);
-            UG_InputFieldHide(&g_mb_window, MB_INP_ID);
-            break;
-
-        case MB_TYPE_CONFIRM:
-            // Two buttons: Yes / No
-            UG_ButtonResize(&g_mb_window, MB_BTN_ID_1, (win_w / 2) - btn_w - 10, btn_y, (win_w / 2) - 10, btn_y + btn_h);
-            UG_ButtonSetText(&g_mb_window, MB_BTN_ID_1, "Yes");
-            UG_ButtonResize(&g_mb_window, MB_BTN_ID_2, (win_w / 2) + 10, btn_y, (win_w / 2) + 10 + btn_w, btn_y + btn_h);
-            UG_ButtonSetText(&g_mb_window, MB_BTN_ID_2, "No");
-            UG_ButtonShow(&g_mb_window, MB_BTN_ID_1);
-            UG_ButtonShow(&g_mb_window, MB_BTN_ID_2);
-            UG_InputFieldHide(&g_mb_window, MB_INP_ID);
-            break;
-
-        case MB_TYPE_PROMPT:
-            // Two buttons: OK / Cancel + Input Field
-            UG_ButtonResize(&g_mb_window, MB_BTN_ID_1, (win_w / 2) - btn_w - 10, btn_y, (win_w / 2) - 10, btn_y + btn_h);
-            UG_ButtonSetText(&g_mb_window, MB_BTN_ID_1, "OK");
-            UG_ButtonResize(&g_mb_window, MB_BTN_ID_2, (win_w / 2) + 10, btn_y, (win_w / 2) + 10 + btn_w, btn_y + btn_h);
-            UG_ButtonSetText(&g_mb_window, MB_BTN_ID_2, "Cancel");
-            UG_ButtonShow(&g_mb_window, MB_BTN_ID_1);
-            UG_ButtonShow(&g_mb_window, MB_BTN_ID_2);
-
-            g_prompt_buffer_ptr = prompt_buffer;
-            if (g_prompt_buffer_ptr) g_prompt_buffer_ptr[0] = '\0';
-
-            UG_InputFieldAssignBuffer(&g_mb_window, MB_INP_ID, prompt_buffer, prompt_buffer_size);
-            UG_InputFieldShow(&g_mb_window, MB_INP_ID);
-            break;
-    }
-
-    UG_WindowShow(&g_mb_window);
-    return UG_RESULT_OK;
-}
-
-bool UG_MessageBoxIsActive(void) {
-    return g_is_active;
-}
-
-MB_RESULT UG_MessageBoxGetResult(void) {
-    if (g_result != MB_RES_NONE) {
-        MB_RESULT res = g_result;
-        g_result = MB_RES_NONE; // Clear result after reading
-        return res;
-    }
-    return MB_RES_NONE;
-}
-
-void UG_MessageBox_KeyboardProc(UG_KEYBOARD_EVENT* event) {
-    UG_OBJECT* focused_obj = g_mb_window.focused_obj;
-    if (!focused_obj || focused_obj->type != OBJ_TYPE_INPUT_FIELD) {
-        // If no input field is focused, just hide the keyboard on enter/hide
-        if (event->type == VKEY_ENTER || event->type == VKEY_HIDE) {
-            UG_OSKeyboard_Hide();
-        }
+static void mb_set_button_area(UG_U8 id, UG_S16 xs, UG_S16 ys, UG_S16 xe, UG_S16 ye)
+{
+    UG_OBJECT *obj = _UG_SearchObject(&mb_window, OBJ_TYPE_BUTTON, id);
+    if (obj == NULL) {
         return;
     }
 
-    switch (event->type) {
-        case VKEY_CHAR:      UG_InputFieldAppendChar(focused_obj, event->character); break;
-        case VKEY_BACKSPACE: UG_InputFieldBackspace(focused_obj); break;
-        case VKEY_SPACE:     UG_InputFieldAppendChar(focused_obj, ' '); break;
-        case VKEY_ENTER:     // Simulate OK click on Enter
-            g_result = MB_RES_OK;
-            g_is_active = false;
-            UG_OSKeyboard_Hide();
-            break;
-        case VKEY_HIDE:
-            UG_OSKeyboard_Hide();
-            break;
-        default: break;
+    obj->a_rel.xs = xs;
+    obj->a_rel.ys = ys;
+    obj->a_rel.xe = xe;
+    obj->a_rel.ye = ye;
+    obj->state |= (OBJ_STATE_UPDATE | OBJ_STATE_REDRAW);
+}
+
+static void mb_focus_object(UG_U8 type, UG_U8 id)
+{
+    UG_OBJECT *obj = _UG_SearchObject(&mb_window, type, id);
+    if (obj != NULL) {
+        UG_Window_SetFocus(&mb_window, obj);
+    }
+}
+
+static void mb_close(UG_MESSAGEBOX_RESULT result)
+{
+    if (!mb_state.active) {
+        return;
+    }
+
+    if (mb_state.style == UG_MESSAGEBOX_STYLE_PROMPT) {
+        const char *text = UG_InputFieldGetText(&mb_window, MB_INPUT_ID);
+        if (text == NULL) {
+            text = "";
+        }
+        if (result == UG_MESSAGEBOX_RESULT_OK && mb_state.prompt_target != NULL && mb_state.prompt_target_length > 0) {
+            if (mb_state.prompt_target_length == 1) {
+                mb_state.prompt_target[0] = '\0';
+            } else {
+                size_t copy_len = mb_state.prompt_target_length - 1;
+                if (copy_len > MB_PROMPT_BUFFER_LENGTH - 1) {
+                    copy_len = MB_PROMPT_BUFFER_LENGTH - 1;
+                }
+                strncpy(mb_state.prompt_target, text, copy_len);
+                mb_state.prompt_target[copy_len] = '\0';
+            }
+        }
+        UG_OSKeyboard_Hide();
+    }
+
+    UG_WindowHide(&mb_window);
+    if (mb_state.previous_window != NULL) {
+        UG_WindowShow(mb_state.previous_window);
+    }
+
+    mb_state.active = 0;
+    mb_state.previous_window = NULL;
+    mb_state.result = result;
+    mb_state.last_style = mb_state.style;
+    mb_state.prompt_target = NULL;
+    mb_state.prompt_target_length = 0;
+}
+
+static void mb_window_callback(UG_MESSAGE *msg)
+{
+    if (msg->type != MSG_TYPE_OBJECT) {
+        return;
+    }
+
+    if (msg->id != OBJ_TYPE_BUTTON) {
+        return;
+    }
+
+    if (msg->event != OBJ_EVENT_CLICKED && msg->event != OBJ_EVENT_PRESSED) {
+        return;
+    }
+
+    switch (msg->sub_id) {
+    case MB_PRIMARY_BUTTON_ID:
+        if (mb_state.style == UG_MESSAGEBOX_STYLE_CONFIRM) {
+            mb_close(UG_MESSAGEBOX_RESULT_YES);
+        } else {
+            mb_close(UG_MESSAGEBOX_RESULT_OK);
+        }
+        break;
+    case MB_SECONDARY_BUTTON_ID:
+        if (mb_state.style == UG_MESSAGEBOX_STYLE_CONFIRM) {
+            mb_close(UG_MESSAGEBOX_RESULT_NO);
+        } else {
+            mb_close(UG_MESSAGEBOX_RESULT_CANCEL);
+        }
+        break;
+    default:
+        break;
+    }
+}
+
+static void mb_prepare_window(const char *text, const char *title)
+{
+    if (title != NULL) {
+        UG_WindowSetTitleText(&mb_window, (char *)title);
+    }
+
+    if (text != NULL) {
+        UG_TextboxSetText(&mb_window, MB_TEXTBOX_ID, (char *)text);
+    }
+
+    UG_ButtonShow(&mb_window, MB_PRIMARY_BUTTON_ID);
+    mb_set_object_visibility(&mb_window, OBJ_TYPE_INPUT_FIELD, MB_INPUT_ID, 0);
+}
+
+void UG_MessageBox_Init(UG_GUI *gui)
+{
+    if (gui == NULL) {
+        return;
+    }
+
+    mb_gui = gui;
+    mb_state.active = 0;
+    mb_state.previous_window = NULL;
+    mb_state.result = UG_MESSAGEBOX_RESULT_NONE;
+    mb_state.last_style = UG_MESSAGEBOX_STYLE_INFO;
+
+    UG_WindowCreate(&mb_window, mb_objects, MB_MAX_OBJECTS, mb_window_callback);
+
+    UG_S16 dialog_x = (UG_GetXDim() - MB_DIALOG_WIDTH) / 2;
+    UG_S16 dialog_y = (UG_GetYDim() - MB_DIALOG_HEIGHT) / 2;
+    UG_WindowResize(&mb_window, dialog_x, dialog_y, dialog_x + MB_DIALOG_WIDTH, dialog_y + MB_DIALOG_HEIGHT);
+    UG_WindowSetTitleTextFont(&mb_window, &FONT_SYSTEM_2);
+
+    UG_TextboxCreate(&mb_window, &mb_textbox, MB_TEXTBOX_ID, MB_TEXTBOX_XS, MB_TEXTBOX_YS,
+                     MB_TEXTBOX_XE, MB_TEXTBOX_YE);
+    UG_TextboxSetFont(&mb_window, MB_TEXTBOX_ID, &FONT_SYSTEM_2);
+    UG_TextboxSetAlignment(&mb_window, MB_TEXTBOX_ID, ALIGN_TOP_LEFT);
+
+    UG_ButtonCreate(&mb_window, &mb_primary_button, MB_PRIMARY_BUTTON_ID,
+                    MB_BUTTON_X_PRIMARY, MB_BUTTON_Y_CONFIRM,
+                    MB_BUTTON_X_PRIMARY + MB_BUTTON_WIDTH, MB_BUTTON_Y_CONFIRM + MB_BUTTON_HEIGHT);
+    UG_ButtonSetFont(&mb_window, MB_PRIMARY_BUTTON_ID, &FONT_SYSTEM_2);
+    UG_ButtonSetText(&mb_window, MB_PRIMARY_BUTTON_ID, "OK");
+
+    UG_ButtonCreate(&mb_window, &mb_secondary_button, MB_SECONDARY_BUTTON_ID,
+                    MB_BUTTON_X_SECONDARY,
+                    MB_BUTTON_Y_CONFIRM,
+                    MB_BUTTON_X_SECONDARY + MB_BUTTON_WIDTH,
+                    MB_BUTTON_Y_CONFIRM + MB_BUTTON_HEIGHT);
+    UG_ButtonSetFont(&mb_window, MB_SECONDARY_BUTTON_ID, &FONT_SYSTEM_2);
+    UG_ButtonSetText(&mb_window, MB_SECONDARY_BUTTON_ID, "Cancel");
+
+    UG_InputFieldCreate(&mb_window, &mb_input_field, MB_INPUT_ID,
+                        MB_INPUTFIELD_XS,
+                        MB_INPUTFIELD_YS,
+                        MB_INPUTFIELD_XE,
+                        MB_INPUTFIELD_YE,
+                        mb_prompt_buffer, sizeof(mb_prompt_buffer));
+    mb_prompt_buffer[0] = '\0';
+    UG_InputFieldSetText(&mb_window, MB_INPUT_ID, mb_prompt_buffer);
+    mb_set_object_visibility(&mb_window, OBJ_TYPE_INPUT_FIELD, MB_INPUT_ID, 0);
+
+    UG_WindowHide(&mb_window);
+}
+
+UG_U8 UG_MessageBox_IsActive(void)
+{
+    return mb_state.active;
+}
+
+UG_WINDOW *UG_MessageBox_GetWindow(void)
+{
+    return &mb_window;
+}
+
+UG_MESSAGEBOX_RESULT UG_MessageBox_GetResult(void)
+{
+    UG_MESSAGEBOX_RESULT result = mb_state.result;
+    mb_state.result = UG_MESSAGEBOX_RESULT_NONE;
+    return result;
+}
+
+UG_MESSAGEBOX_STYLE UG_MessageBox_GetLastStyle(void)
+{
+    return mb_state.last_style;
+}
+
+UG_MESSAGEBOX_STYLE UG_MessageBox_GetActiveStyle(void)
+{
+    if (mb_state.active) {
+        return mb_state.style;
+    }
+    return mb_state.last_style;
+}
+
+const char *UG_MessageBox_GetPromptText(void)
+{
+    return UG_InputFieldGetText(&mb_window, MB_INPUT_ID);
+}
+
+void UG_MessageBox_ShowInfo(const char *text, const char *title)
+{
+    if (mb_gui == NULL || mb_state.active) {
+        return;
+    }
+
+    mb_state.style = UG_MESSAGEBOX_STYLE_INFO;
+    mb_state.result = UG_MESSAGEBOX_RESULT_NONE;
+    mb_state.previous_window = mb_gui->active_window;
+    mb_state.active = 1;
+
+    mb_prepare_window(text, title);
+
+    UG_ButtonSetText(&mb_window, MB_PRIMARY_BUTTON_ID, "OK");
+
+    UG_ButtonHide(&mb_window, MB_SECONDARY_BUTTON_ID);
+
+    UG_S16 center_x = (MB_DIALOG_WIDTH - MB_BUTTON_WIDTH) / 2;
+    mb_set_button_area(MB_PRIMARY_BUTTON_ID,
+                       center_x,
+                       MB_BUTTON_Y_CONFIRM,
+                       center_x + MB_BUTTON_WIDTH,
+                       MB_BUTTON_Y_CONFIRM + MB_BUTTON_HEIGHT);
+    mb_focus_object(OBJ_TYPE_BUTTON, MB_PRIMARY_BUTTON_ID);
+
+    UG_WindowShow(&mb_window);
+}
+
+void UG_MessageBox_ShowConfirm(const char *text, const char *title)
+{
+    if (mb_gui == NULL || mb_state.active) {
+        return;
+    }
+
+    mb_state.style = UG_MESSAGEBOX_STYLE_CONFIRM;
+    mb_state.result = UG_MESSAGEBOX_RESULT_NONE;
+    mb_state.previous_window = mb_gui->active_window;
+    mb_state.active = 1;
+
+    mb_prepare_window(text, title);
+
+    UG_ButtonSetText(&mb_window, MB_PRIMARY_BUTTON_ID, "Yes");
+    UG_ButtonSetText(&mb_window, MB_SECONDARY_BUTTON_ID, "No");
+    UG_ButtonShow(&mb_window, MB_SECONDARY_BUTTON_ID);
+
+    mb_set_button_area(MB_PRIMARY_BUTTON_ID,
+                       MB_BUTTON_X_PRIMARY,
+                       MB_BUTTON_Y_CONFIRM,
+                       MB_BUTTON_X_PRIMARY + MB_BUTTON_WIDTH,
+                       MB_BUTTON_Y_CONFIRM + MB_BUTTON_HEIGHT);
+    mb_set_button_area(MB_SECONDARY_BUTTON_ID,
+                       MB_BUTTON_X_SECONDARY,
+                       MB_BUTTON_Y_CONFIRM,
+                       MB_BUTTON_X_SECONDARY + MB_BUTTON_WIDTH,
+                       MB_BUTTON_Y_CONFIRM + MB_BUTTON_HEIGHT);
+
+    mb_focus_object(OBJ_TYPE_BUTTON, MB_PRIMARY_BUTTON_ID);
+
+    UG_WindowShow(&mb_window);
+}
+
+void UG_MessageBox_ShowPrompt(const char *text, const char *title, char *buffer, UG_U16 buffer_len)
+{
+    if (mb_gui == NULL || mb_state.active) {
+        return;
+    }
+
+    mb_state.style = UG_MESSAGEBOX_STYLE_PROMPT;
+    mb_state.result = UG_MESSAGEBOX_RESULT_NONE;
+    mb_state.previous_window = mb_gui->active_window;
+    mb_state.active = 1;
+    mb_state.prompt_target = buffer;
+    mb_state.prompt_target_length = buffer_len;
+
+    mb_prepare_window(text, title);
+
+    UG_ButtonSetText(&mb_window, MB_PRIMARY_BUTTON_ID, "OK");
+    UG_ButtonSetText(&mb_window, MB_SECONDARY_BUTTON_ID, "Cancel");
+    UG_ButtonShow(&mb_window, MB_SECONDARY_BUTTON_ID);
+
+    mb_set_button_area(MB_PRIMARY_BUTTON_ID,
+                       MB_BUTTON_X_PRIMARY,
+                       MB_BUTTON_Y_PROMPT,
+                       MB_BUTTON_X_PRIMARY + MB_BUTTON_WIDTH,
+                       MB_BUTTON_Y_PROMPT + MB_BUTTON_HEIGHT);
+    mb_set_button_area(MB_SECONDARY_BUTTON_ID,
+                       MB_BUTTON_X_SECONDARY,
+                       MB_BUTTON_Y_PROMPT,
+                       MB_BUTTON_X_SECONDARY + MB_BUTTON_WIDTH,
+                       MB_BUTTON_Y_PROMPT + MB_BUTTON_HEIGHT);
+
+    if (buffer != NULL && buffer_len > 1) {
+        size_t copy_len = buffer_len - 1;
+        if (copy_len > MB_PROMPT_BUFFER_LENGTH - 1) {
+            copy_len = MB_PROMPT_BUFFER_LENGTH - 1;
+        }
+        strncpy(mb_prompt_buffer, buffer, copy_len);
+        mb_prompt_buffer[copy_len] = '\0';
+        UG_InputFieldSetText(&mb_window, MB_INPUT_ID, mb_prompt_buffer);
+    } else {
+        mb_prompt_buffer[0] = '\0';
+        UG_InputFieldSetText(&mb_window, MB_INPUT_ID, mb_prompt_buffer);
+    }
+
+    mb_set_object_visibility(&mb_window, OBJ_TYPE_INPUT_FIELD, MB_INPUT_ID, 1);
+    mb_focus_object(OBJ_TYPE_INPUT_FIELD, MB_INPUT_ID);
+
+    UG_WindowShow(&mb_window);
+    UG_OSKeyboard_Show();
+}
+
+void UG_MessageBox_SubmitPrimary(void)
+{
+    if (!mb_state.active) {
+        return;
+    }
+
+    switch (mb_state.style) {
+    case UG_MESSAGEBOX_STYLE_CONFIRM:
+        mb_close(UG_MESSAGEBOX_RESULT_YES);
+        break;
+    case UG_MESSAGEBOX_STYLE_PROMPT:
+        mb_close(UG_MESSAGEBOX_RESULT_OK);
+        break;
+    case UG_MESSAGEBOX_STYLE_INFO:
+    default:
+        mb_close(UG_MESSAGEBOX_RESULT_OK);
+        break;
+    }
+}
+
+void UG_MessageBox_SubmitSecondary(void)
+{
+    if (!mb_state.active) {
+        return;
+    }
+
+    switch (mb_state.style) {
+    case UG_MESSAGEBOX_STYLE_CONFIRM:
+        mb_close(UG_MESSAGEBOX_RESULT_NO);
+        break;
+    case UG_MESSAGEBOX_STYLE_PROMPT:
+        mb_close(UG_MESSAGEBOX_RESULT_CANCEL);
+        break;
+    case UG_MESSAGEBOX_STYLE_INFO:
+    default:
+        mb_close(UG_MESSAGEBOX_RESULT_CANCEL);
+        break;
     }
 }
